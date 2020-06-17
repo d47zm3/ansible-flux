@@ -1,0 +1,34 @@
+---
+- name: Install Flux CRD
+  command: kubectl apply -f https://raw.githubusercontent.com/fluxcd/helm-operator/master/deploy/crds.yaml
+
+- name: Add Flux Helm Repository
+  command: helm repo add fluxcd https://charts.fluxcd.io
+
+- name: Create a Flux Namespace
+  k8s:
+    name: flux
+    api_version: v1
+    kind: Namespace
+    state: present
+
+- name: Install Flux
+  command: helm upgrade -i flux fluxcd/flux --set git.url=git@github.com:{{ github_username }}/{{ github_repository }} --namespace flux
+
+- name: Install Helm Operator
+  command: helm upgrade -i helm-operator fluxcd/helm-operator --set git.ssh.secretName=flux-git-deploy --namespace flux --set helm.versions=v3
+
+- name: Wait For Flux Operator
+  pause:
+    minutes: 1
+
+- command: fluxctl identity --k8s-fwd-ns flux
+  register: public_key
+  tags:
+    - public_key
+
+- name: Print Flux Public Key
+  debug:
+    var: public_key.stdout
+  tags:
+    - public_key

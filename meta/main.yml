@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: d47zm3
+  role_name: flux
+  description: Flux + Helm Operator
+  license: "license (BSD, MIT)"
+
+  min_ansible_version: 2.9
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - bionic
+
+  galaxy_tags:
+    - kubernetes
+    - linux
+    - gitops
+    - flux
+    - helm
+
+dependencies: []
