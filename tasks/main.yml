@@ -1,9 +1,23 @@
 ---
+- name: Check If Flux CRD Exists
+  command: kubectl get crd helmreleases.helm.fluxcd.io
+  register: flux_crd
+  ignore_errors: yes
+  changed_when: false
+
 - name: Install Flux CRD
   command: kubectl apply -f https://raw.githubusercontent.com/fluxcd/helm-operator/master/deploy/crds.yaml
+  when: flux_crd.rc == 1
+
+- name: Check If Flux Helm Repository Exists
+  shell: helm repo list | grep -q fluxcd
+  register: flux_repository
+  ignore_errors: yes
+  changed_when: false
 
 - name: Add Flux Helm Repository
   command: helm repo add fluxcd https://charts.fluxcd.io
+  when: flux_repository.rc != 0
 
 - name: Create a Flux Namespace
   k8s:
@@ -14,21 +28,26 @@
 
 - name: Install Flux
   command: helm upgrade -i flux fluxcd/flux --set git.url=git@github.com:{{ github_username }}/{{ github_repository }} --namespace flux
+  changed_when: false
 
 - name: Install Helm Operator
-  command: helm upgrade -i helm-operator fluxcd/helm-operator --set git.ssh.secretName=flux-git-deploy --namespace flux --set helm.versions=v3
+  command: >
+    helm upgrade -i helm-operator fluxcd/helm-operator \
+      --set git.ssh.secretName=flux-git-deploy \
+      --namespace flux \
+      --set helm.versions=v3 \
+      --set git.pollInterval=1m
+  changed_when: false
 
 - name: Wait For Flux Operator
   pause:
     minutes: 1
 
-- command: fluxctl identity --k8s-fwd-ns flux
+- name: Get Flux Public Key
+  command: fluxctl identity --k8s-fwd-ns flux
   register: public_key
-  tags:
-    - public_key
+  changed_when: false
 
 - name: Print Flux Public Key
   debug:
     var: public_key.stdout
-  tags:
-    - public_key
